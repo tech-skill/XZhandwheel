@@ -27,32 +27,51 @@
 
 /* Private typedef -----------------------------------------------------------*/
 /* USER CODE BEGIN PTD */
+	enum AxisName {X_Axis=0, Z_Axis};
 
 /* USER CODE END PTD */
 
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
+#define X_AXIS 0x04
+#define Z_AXIS 0x08
 /* USER CODE END PD */
 
 /* Private macro -------------------------------------------------------------*/
 /* USER CODE BEGIN PM */
+#define sign(cnt) 	((cnt<0)?-1:1)
+#define abs(cnt)	((cnt<0)?-1*cnt:cnt)
 
 /* USER CODE END PM */
 
 /* Private variables ---------------------------------------------------------*/
-TIM_HandleTypeDef htim1;
 TIM_HandleTypeDef htim2;
+TIM_HandleTypeDef htim3;
 
 /* USER CODE BEGIN PV */
+	static int32_t X_Count= 0;
+	static int32_t Z_Count= 0;
+	static int16_t Selected_Axis= X_AXIS;
+	int16_t Q[4]= {0x05, 0x09, 0x0a, 0x06};
+	_Bool A[4] = { 0, 1, 1, 0 };
+	_Bool An[4]= { 1, 0, 0, 1 };
+	_Bool B[4] = { 0, 0, 1, 1 };
+	_Bool Bn[4]= { 1, 1, 0, 0 };
+
 
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
 void SystemClock_Config(void);
 static void MX_GPIO_Init(void);
-static void MX_TIM1_Init(void);
 static void MX_TIM2_Init(void);
+static void MX_TIM3_Init(void);
 /* USER CODE BEGIN PFP */
+int16_t SelectAxis( int16_t axis);
+int16_t GetSelectedAxis();
+int16_t GetX_Count();
+int16_t GetZ_Count();
+void Quadrature( int count);
 
 /* USER CODE END PFP */
 
@@ -68,7 +87,6 @@ static void MX_TIM2_Init(void);
 int main(void)
 {
   /* USER CODE BEGIN 1 */
-
   /* USER CODE END 1 */
 
   /* MCU Configuration--------------------------------------------------------*/
@@ -89,8 +107,8 @@ int main(void)
 
   /* Initialize all configured peripherals */
   MX_GPIO_Init();
-  MX_TIM1_Init();
   MX_TIM2_Init();
+  MX_TIM3_Init();
   /* USER CODE BEGIN 2 */
 
   /* USER CODE END 2 */
@@ -102,6 +120,20 @@ int main(void)
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
+	  int32_t x= GetX_Count();
+	  int32_t z= GetZ_Count();
+
+	  if (x > 0)
+	  {
+		  SelectAxis( X_AXIS);
+		  Quadrature( x);
+	  }
+	  if (z > 0)
+	  {
+		  SelectAxis( Z_AXIS);
+		  Quadrature( z);
+	  }
+
   }
   /* USER CODE END 3 */
 }
@@ -139,56 +171,6 @@ void SystemClock_Config(void)
   {
     Error_Handler();
   }
-}
-
-/**
-  * @brief TIM1 Initialization Function
-  * @param None
-  * @retval None
-  */
-static void MX_TIM1_Init(void)
-{
-
-  /* USER CODE BEGIN TIM1_Init 0 */
-
-  /* USER CODE END TIM1_Init 0 */
-
-  TIM_Encoder_InitTypeDef sConfig = {0};
-  TIM_MasterConfigTypeDef sMasterConfig = {0};
-
-  /* USER CODE BEGIN TIM1_Init 1 */
-
-  /* USER CODE END TIM1_Init 1 */
-  htim1.Instance = TIM1;
-  htim1.Init.Prescaler = 0;
-  htim1.Init.CounterMode = TIM_COUNTERMODE_UP;
-  htim1.Init.Period = 65535;
-  htim1.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
-  htim1.Init.RepetitionCounter = 0;
-  htim1.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
-  sConfig.EncoderMode = TIM_ENCODERMODE_TI1;
-  sConfig.IC1Polarity = TIM_ICPOLARITY_RISING;
-  sConfig.IC1Selection = TIM_ICSELECTION_DIRECTTI;
-  sConfig.IC1Prescaler = TIM_ICPSC_DIV1;
-  sConfig.IC1Filter = 0;
-  sConfig.IC2Polarity = TIM_ICPOLARITY_RISING;
-  sConfig.IC2Selection = TIM_ICSELECTION_DIRECTTI;
-  sConfig.IC2Prescaler = TIM_ICPSC_DIV1;
-  sConfig.IC2Filter = 0;
-  if (HAL_TIM_Encoder_Init(&htim1, &sConfig) != HAL_OK)
-  {
-    Error_Handler();
-  }
-  sMasterConfig.MasterOutputTrigger = TIM_TRGO_RESET;
-  sMasterConfig.MasterSlaveMode = TIM_MASTERSLAVEMODE_DISABLE;
-  if (HAL_TIMEx_MasterConfigSynchronization(&htim1, &sMasterConfig) != HAL_OK)
-  {
-    Error_Handler();
-  }
-  /* USER CODE BEGIN TIM1_Init 2 */
-
-  /* USER CODE END TIM1_Init 2 */
-
 }
 
 /**
@@ -235,8 +217,58 @@ static void MX_TIM2_Init(void)
     Error_Handler();
   }
   /* USER CODE BEGIN TIM2_Init 2 */
+  HAL_TIM_Encoder_Start(&htim2, TIM_CHANNEL_ALL);
 
   /* USER CODE END TIM2_Init 2 */
+
+}
+
+/**
+  * @brief TIM3 Initialization Function
+  * @param None
+  * @retval None
+  */
+static void MX_TIM3_Init(void)
+{
+
+  /* USER CODE BEGIN TIM3_Init 0 */
+
+  /* USER CODE END TIM3_Init 0 */
+
+  TIM_Encoder_InitTypeDef sConfig = {0};
+  TIM_MasterConfigTypeDef sMasterConfig = {0};
+
+  /* USER CODE BEGIN TIM3_Init 1 */
+
+  /* USER CODE END TIM3_Init 1 */
+  htim3.Instance = TIM3;
+  htim3.Init.Prescaler = 0;
+  htim3.Init.CounterMode = TIM_COUNTERMODE_UP;
+  htim3.Init.Period = 65535;
+  htim3.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
+  htim3.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
+  sConfig.EncoderMode = TIM_ENCODERMODE_TI1;
+  sConfig.IC1Polarity = TIM_ICPOLARITY_RISING;
+  sConfig.IC1Selection = TIM_ICSELECTION_DIRECTTI;
+  sConfig.IC1Prescaler = TIM_ICPSC_DIV1;
+  sConfig.IC1Filter = 0;
+  sConfig.IC2Polarity = TIM_ICPOLARITY_RISING;
+  sConfig.IC2Selection = TIM_ICSELECTION_DIRECTTI;
+  sConfig.IC2Prescaler = TIM_ICPSC_DIV1;
+  sConfig.IC2Filter = 0;
+  if (HAL_TIM_Encoder_Init(&htim3, &sConfig) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  sMasterConfig.MasterOutputTrigger = TIM_TRGO_RESET;
+  sMasterConfig.MasterSlaveMode = TIM_MASTERSLAVEMODE_DISABLE;
+  if (HAL_TIMEx_MasterConfigSynchronization(&htim3, &sMasterConfig) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  /* USER CODE BEGIN TIM3_Init 2 */
+  HAL_TIM_Encoder_Start(&htim3, TIM_CHANNEL_ALL);
+  /* USER CODE END TIM3_Init 2 */
 
 }
 
@@ -255,10 +287,15 @@ static void MX_GPIO_Init(void)
   __HAL_RCC_GPIOB_CLK_ENABLE();
 
   /*Configure GPIO pin Output Level */
+  HAL_GPIO_WritePin(GPIOB, X_Select_Pin|Z_Select_Pin, GPIO_PIN_SET);
+
+  /*Configure GPIO pin Output Level */
   HAL_GPIO_WritePin(GPIOB, A_Pin|An_Pin|B_Pin|Bn_Pin, GPIO_PIN_RESET);
 
-  /*Configure GPIO pins : A_Pin An_Pin B_Pin Bn_Pin */
-  GPIO_InitStruct.Pin = A_Pin|An_Pin|B_Pin|Bn_Pin;
+  /*Configure GPIO pins : X_Select_Pin Z_Select_Pin A_Pin An_Pin
+                           B_Pin Bn_Pin */
+  GPIO_InitStruct.Pin = X_Select_Pin|Z_Select_Pin|A_Pin|An_Pin
+                          |B_Pin|Bn_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
@@ -267,6 +304,56 @@ static void MX_GPIO_Init(void)
 }
 
 /* USER CODE BEGIN 4 */
+int16_t SelectAxis( int16_t axis)
+{
+	Selected_Axis= axis;
+	if( Selected_Axis == X_AXIS)
+	{
+		HAL_GPIO_WritePin(X_Select_GPIO_Port, X_Select_Pin, GPIO_PIN_SET);
+		HAL_GPIO_WritePin(Z_Select_GPIO_Port, Z_Select_Pin, GPIO_PIN_RESET);
+	}
+	else if( Selected_Axis == Z_AXIS)
+	{
+		HAL_GPIO_WritePin(X_Select_GPIO_Port, X_Select_Pin, GPIO_PIN_RESET);
+		HAL_GPIO_WritePin(Z_Select_GPIO_Port, Z_Select_Pin, GPIO_PIN_SET);
+	}
+	return Selected_Axis;
+}
+
+int16_t GetSelectedAxis()
+{
+	return Selected_Axis;
+}
+
+int16_t GetX_Count()
+{
+	int16_t cnt= (int16_t)TIM3->CNT;
+	int16_t diff= cnt - X_Count;
+	X_Count= cnt;
+	return diff;
+}
+
+int16_t GetZ_Count()
+{
+	int16_t cnt= (int16_t)TIM2->CNT;
+	int32_t diff= cnt - Z_Count;
+	Z_Count= cnt;
+	return diff;
+}
+
+void Quadrature( int count)
+{
+	static int8_t Qindex = 0;
+	int8_t dir =  sign(count);
+	for (int counter = 0; counter < abs(count); counter++)
+	{
+		Qindex += dir; Qindex &= 0x3;
+		HAL_GPIO_WritePin(A_GPIO_Port, A_Pin, A[Qindex]);
+		HAL_GPIO_WritePin(An_GPIO_Port, An_Pin, An[Qindex]);
+		HAL_GPIO_WritePin(B_GPIO_Port, B_Pin, B[Qindex]);
+		HAL_GPIO_WritePin(Bn_GPIO_Port, Bn_Pin, Bn[Qindex]);
+	}
+}
 
 /* USER CODE END 4 */
 
